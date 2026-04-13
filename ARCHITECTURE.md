@@ -13,13 +13,13 @@
 | **Frontend** | Next.js 14 (App Router) + TypeScript | Server Components reduce client JS; App Router collocates data fetching with UI; TypeScript catches schema drift early |
 | **Styling** | Tailwind CSS | Rapid utility-first prototyping; no CSS file sprawl; trivially responsive |
 | **Backend** | Next.js API Routes (Route Handlers) | Same repo as frontend; no separate server to deploy or maintain; serverless functions on Vercel scale to zero |
-| **AI** | Claude API (`claude-sonnet-4-6`) via `@anthropic-ai/sdk` | Native multimodal vision support; structured JSON output via tool use; generous context window handles long image payloads |
+| **AI** | Groq API — `meta-llama/llama-4-scout-17b-16e-instruct` via OpenAI-compatible client (`openai` SDK, `baseURL` `https://api.groq.com/openai/v1`) | Fast vision inference; tool calling + JSON mode per Groq docs; image URL or base64; 128K context |
 | **Database** | PostgreSQL via Supabase | Managed Postgres removes ops burden; built-in Row-Level Security enforces auth rules at DB layer; free tier fits project scale |
 | **Auth** | Supabase Auth (Google + GitHub OAuth) | No password storage; OAuth tokens managed by Supabase; tight integration with RLS policies |
 | **Image Storage** | Supabase Storage | Same project, same auth token; public CDN URLs usable directly in `<img>` tags and AI API calls |
 | **Deployment** | Vercel | Zero-config Next.js deploys; preview URLs per PR; environment variables managed in dashboard |
 
-**Why Claude over GPT-4o Vision:** Claude's `tool_use` API enforces typed JSON output with a declared schema — no regex parsing of prose. This makes the roast report fields (`poop_score`, `heuristics_violated`, `roast_text`, `fix_suggestion`) reliably machine-readable without post-processing.
+**Why Groq:** The OpenAI-compatible `chat.completions` API supports vision and **forced function calling** for `submit_roast_report`, so roast fields are machine-readable without parsing free text. Latency is low on Groq’s inference stack; the Scout model is in preview — swap `GROQ_ROAST_MODEL` if Groq ships a newer vision default.
 
 ---
 
@@ -166,48 +166,28 @@ The AI pipeline is the core of the product. It runs server-side in a Next.js Rou
 
 ### 5.1 Tool-Use Schema
 
-Rather than parsing prose, the Claude API is called with a declared tool that forces structured output:
+Rather than parsing prose, Groq is called with an OpenAI-style **function tool** and `tool_choice` forced to `submit_roast_report`:
 
 ```typescript
-// lib/ai/roast.ts
+// lib/ai/roast.ts — OpenAI ChatCompletionTool shape
 
 const ROAST_TOOL = {
-  name: "submit_roast_report",
-  description: "Submit a structured Design Roast Report for the uploaded image.",
-  input_schema: {
-    type: "object",
-    properties: {
-      poop_score: {
-        type: "integer",
-        minimum: 1,
-        maximum: 10,
-        description: "How bad is this design? 1 = minor inconvenience, 10 = criminally negligent."
+  type: "function" as const,
+  function: {
+    name: "submit_roast_report",
+    description: "Submit a structured Design Roast Report for the uploaded image.",
+    parameters: {
+      type: "object",
+      properties: {
+        poop_score: { type: "integer", minimum: 1, maximum: 10, description: "…" },
+        heuristics_violated: { type: "array", items: { type: "string" }, description: "…" },
+        roast_text: { type: "string", description: "…" },
+        fix_suggestion: { type: "string", description: "…" },
+        confidence: { type: "number", minimum: 0, maximum: 1, description: "…" },
+        should_moderate: { type: "boolean", description: "…" }
       },
-      heuristics_violated: {
-        type: "array",
-        items: { type: "string" },
-        description: "Which of Nielsen's 10 Usability Heuristics are violated? Use the canonical names."
-      },
-      roast_text: {
-        type: "string",
-        description: "A witty, entertaining roast paragraph (2–4 sentences). Punchy, specific, not mean-spirited."
-      },
-      fix_suggestion: {
-        type: "string",
-        description: "A constructive 1–3 sentence suggestion for how this design could be improved."
-      },
-      confidence: {
-        type: "number",
-        minimum: 0,
-        maximum: 1,
-        description: "Your confidence that this is a genuine design example (not NSFW, spam, or unrelated). 0 = definitely not design-related, 1 = clearly a design artifact."
-      },
-      should_moderate: {
-        type: "boolean",
-        description: "True if this submission should go to human moderation before appearing publicly."
-      }
-    },
-    required: ["poop_score", "heuristics_violated", "roast_text", "fix_suggestion", "confidence", "should_moderate"]
+      required: ["poop_score", "heuristics_violated", "roast_text", "fix_suggestion", "confidence", "should_moderate"]
+    }
   }
 };
 ```
@@ -241,38 +221,35 @@ Nielsen's 10 Heuristics (use these exact names in heuristics_violated):
 ### 5.3 Calling the API
 
 ```typescript
-import Anthropic from "@anthropic-ai/sdk";
+import OpenAI from "openai";
 
-const client = new Anthropic();
+const client = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 export async function generateRoastReport(imageUrl: string, userDescription: string) {
-  const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 1024,
+  const completion = await client.chat.completions.create({
+    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    max_completion_tokens: 1024,
     tools: [ROAST_TOOL],
-    tool_choice: { type: "any" },  // force tool use
-    system: SYSTEM_PROMPT,
+    tool_choice: { type: "function", function: { name: "submit_roast_report" } },
     messages: [
+      { role: "system", content: SYSTEM_PROMPT },
       {
         role: "user",
         content: [
-          {
-            type: "image",
-            source: { type: "url", url: imageUrl }
-          },
-          {
-            type: "text",
-            text: `Category context from submitter: ${userDescription}`
-          }
-        ]
-      }
-    ]
+          { type: "text", text: `Category context from submitter: ${userDescription}` },
+          { type: "image_url", image_url: { url: imageUrl } },
+        ],
+      },
+    ],
   });
 
-  const toolUse = response.content.find(b => b.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") throw new Error("AI did not return a tool call");
+  const call = completion.choices[0]?.message?.tool_calls?.[0];
+  if (!call || call.function.name !== "submit_roast_report") throw new Error("No tool call");
 
-  return toolUse.input as RoastReport;
+  return JSON.parse(call.function.arguments) as RoastReport;
 }
 ```
 
@@ -300,7 +277,7 @@ A Vercel Cron Job fires weekly and monthly:
 
 | Decision | Alternative Considered | Reason for Choice |
 |---|---|---|
-| Claude `tool_use` for structured output | Prompt asking for JSON + manual parse | Tool use guarantees schema; no brittle regex or JSON.parse failures |
+| Groq + forced OpenAI-style `function` tool call | Prose + manual parse | Same structured-args pattern as OpenAI tool_calls; arguments JSON parsed once |
 | Denormalized `vote_score` column | COUNT/SUM in query at read time | Gallery sort with pagination needs indexed integer; aggregate queries don't index well |
 | Next.js Route Handlers (not FastAPI) | Separate FastAPI microservice | Fewer moving parts for a 4-week project; serverless on Vercel; no Docker/infra setup |
 | `status` enum on submissions | Separate moderation table | Simpler queries; one row per submission; status transitions are linear |
@@ -355,5 +332,6 @@ A Vercel Cron Job fires weekly and monthly:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=      # server-only, for admin ops
-ANTHROPIC_API_KEY=              # server-only, never exposed to client
+GROQ_API_KEY=                   # server-only, never exposed to client
+GROQ_ROAST_MODEL=               # optional override (default: meta-llama/llama-4-scout-17b-16e-instruct)
 ```
