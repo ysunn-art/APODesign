@@ -58,7 +58,7 @@
 ### Functional Requirements
 
 1. **Image Upload**: Accept JPEG, PNG, and WebP images up to 10MB.
-2. **AI Analysis**: Use a multimodal AI API (OpenAI GPT-4o Vision or Claude) to generate the Design Roast Report within 15 seconds of submission.
+2. **AI Analysis**: Use a multimodal AI API (implementation: Groq Llama 4 Scout vision, or equivalent) to generate the Design Roast Report within 15 seconds of submission.
 3. **Voting System**: Each authenticated user gets one upvote or downvote per submission. Votes are toggleable.
 4. **Leaderboard**: Auto-updated rankings with weekly and monthly periods. Resets at the start of each period but historical data is preserved.
 5. **Gallery**: Paginated, filterable by category, sortable by date / 💩 Score / votes.
@@ -78,7 +78,7 @@
 | ------------- | -------------------------------------- |
 | Frontend      | React / Next.js + Tailwind CSS         |
 | Backend       | Next.js API Routes or FastAPI (Python) |
-| AI            | OpenAI GPT-4o Vision API / Claude API  |
+| AI            | Groq API (Llama 4 Scout vision) / OpenAI-compatible tool calls  |
 | Database      | PostgreSQL via Supabase                |
 | Auth          | Supabase Auth (Google & GitHub OAuth)  |
 | Image Storage | Supabase Storage or Cloudflare R2      |
@@ -116,7 +116,7 @@ This project is decomposed into the following 7 issues:
 1. **Project Setup & Infrastructure** — Initialize Next.js project, configure Supabase (database, auth, storage), set up deployment pipeline on Vercel, create DB schema.
 2. **Authentication & User Profiles** — Implement OAuth login (Google/GitHub) via Supabase Auth, build user profile page showing submissions, votes, and trophies.
 3. **Submission Flow & Image Upload** — Build the submission form (image upload + description + category tag), implement image validation and storage, create submission confirmation UI.
-4. **AI Roast Report Generation** — Engineer prompts for multimodal AI analysis, integrate API (GPT-4o Vision or Claude), build the Roast Report display component (💩 Score, heuristics, roast, fix suggestion).
+4. **AI Roast Report Generation** — Engineer prompts for multimodal AI analysis, integrate API (Groq vision + structured tool output), build the Roast Report display component (💩 Score, heuristics, roast, fix suggestion).
 5. **Gallery & Filtering** — Build paginated public gallery, implement filters (category, date, score) and sorting, design submission detail page with full roast report.
 6. **Voting System & Leaderboard** — Implement upvote/downvote logic, build weekly/monthly leaderboard with trophy badges, create Hall of Shame archive page.
 7. **Moderation & Polish** — Build moderation queue for flagged submissions, add community flagging feature, responsive design pass, accessibility review, final deployment.

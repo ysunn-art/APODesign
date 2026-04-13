@@ -30,7 +30,7 @@ Think of it as the Golden Raspberry Awards, but for design.
 |-------|-----------|
 | Frontend | React / Next.js + Tailwind CSS |
 | Backend | Next.js API Routes or FastAPI |
-| AI | OpenAI GPT-4o Vision / Claude API |
+| AI | Groq API (Llama 4 Scout vision) |
 | Database | PostgreSQL (Supabase) |
 | Auth | Supabase Auth |
 | Storage | Supabase Storage / Cloudflare R2 |
@@ -47,9 +47,16 @@ Think of it as the Golden Raspberry Awards, but for design.
 
 **Developer:** Rebecca Yang
 **Agreed Fee:** 40 GIX Bucks
-```bash
-# TODO: Add setup instructions after project initialization
-```
+### Local setup (Week 1)
+
+1. `npm install`
+2. Copy `.env.example` → `.env.local` and fill Supabase + `GROQ_API_KEY` when testing AI.
+3. In [Supabase](https://supabase.com): new project → **SQL Editor** → run `supabase/migrations/20260413000000_initial_schema.sql`.
+4. **Storage:** create a public bucket (e.g. `submissions`) for images; wire Week 2 upload API.
+5. **Check-in 1 AI validation:** `GROQ_API_KEY=... npm run test:roast` (optional: `TEST_IMAGE_URL` for a bad-UI screenshot).
+6. **Dev server:** `npm run dev`
+
+Wireframes: `docs/wireframes.md` (or add a Figma link for your course).
 
 ## License
 
