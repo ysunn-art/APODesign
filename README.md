@@ -1,5 +1,99 @@
-# TECHIN 510 Final Project
+# TECHIN 510 Final Project — A Piece of Design
+
+> **Live URL:** _set after first Vercel deploy — see [Deploy](#deploy) below._  
+> Set it in this file (replace this line) once `vercel --prod` returns a URL.
+
+See [`README2.md`](./README2.md) for the product overview and [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the technical design.
+
 ---
+
+## Local development
+
+```bash
+npm install
+cp .env.example .env.local            # fill in Supabase + Groq keys
+npm run dev                           # http://localhost:3000
+```
+
+You also need a Supabase project with the schema applied:
+
+```bash
+# In Supabase → SQL Editor, paste and run:
+supabase/migrations/20260413000000_initial_schema.sql
+```
+
+Then in **Authentication → Providers** enable **Google** and/or **GitHub** OAuth, and add the redirect URL `https://<your-domain>/auth/callback` (plus `http://localhost:3000/auth/callback` for dev).
+
+To smoke-test the AI pipeline without running the app:
+
+```bash
+GROQ_API_KEY=gsk_... npm run test:roast
+```
+
+## Deploy
+
+The app is designed to deploy to **Vercel** + **Supabase** with zero infra of your own.
+
+1. **Supabase**
+   - Create a new project at https://supabase.com.
+   - In **SQL Editor**, run `supabase/migrations/20260413000000_initial_schema.sql`. This creates all tables, the vote-score trigger, RLS policies, and the public `submissions` storage bucket.
+   - In **Authentication → Providers**, enable Google and/or GitHub. Add `https://<your-vercel-domain>/auth/callback` as a redirect URL.
+   - Copy `Project URL`, `anon` key, and `service_role` key for the next step.
+
+2. **Vercel**
+   - Import this GitHub repo at https://vercel.com/new.
+   - Framework: Next.js (auto-detected).
+   - In **Settings → Environment Variables**, add (matching `.env.example`):
+     - `NEXT_PUBLIC_SUPABASE_URL`
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+     - `SUPABASE_SERVICE_ROLE_KEY`  ← Encrypt; do **not** expose to client
+     - `GROQ_API_KEY`               ← server-only
+     - `GROQ_ROAST_MODEL`           ← optional
+   - Click **Deploy**.
+
+3. **Automated deploys (already configured)**
+   - Vercel's GitHub integration deploys every push: previews on PR branches, production on `main`.
+   - `.github/workflows/ci.yml` runs typecheck + build on every PR.
+
+4. **Verify on a fresh device**
+   - Open the production URL in an incognito window or another device.
+   - Sign in with Google/GitHub, submit an image, confirm the AI roast appears.
+   - Hit `https://<your-domain>/api/health` — should return `{ "ok": true, ... }`.
+
+## Project structure
+
+```
+app/                   Next.js App Router pages + API routes
+  api/submissions/     POST: upload + AI roast + insert
+  api/votes/           POST/DELETE: cast/retract vote
+  api/comments/        POST: add comment
+  api/flags/           POST: report submission
+  api/moderation/      PATCH: moderator approve/reject
+  api/health/          GET:  health check
+  auth/callback/       OAuth code exchange
+  submit/              Submission form
+  submission/[id]/     Detail page (RoastReport + voting + comments)
+  leaderboard/         Weekly/monthly top
+  hall-of-shame/       All-time top
+  moderation/          Mod queue (moderator only)
+components/            Shared client components
+lib/ai/roast.ts        Groq tool-call roast pipeline
+lib/supabase/          server/client/admin clients
+lib/types.ts           Shared TS types
+supabase/migrations/   SQL schema, triggers, RLS, storage bucket
+```
+
+## Granting moderator access
+
+Roles are stored on `public.users.is_moderator`. In Supabase SQL Editor:
+
+```sql
+update public.users set is_moderator = true where username = 'your-handle';
+```
+
+---
+
+## Original course assignment
 
 ## Overview
 
