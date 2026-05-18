@@ -1,9 +1,8 @@
 # TECHIN 510 Final Project — A Piece of Design
 
 > **🌐 Live URL:** https://a-piece-of-design.vercel.app  
-> Health check: https://a-piece-of-design.vercel.app/api/health
-
-See [`README2.md`](./README2.md) for the product overview and [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the technical design.
+> **❤️ Health check:** https://a-piece-of-design.vercel.app/api/health  
+> Product overview: [`README2.md`](./README2.md). Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md). Spec: [`SPEC.md`](./SPEC.md).
 
 ---
 
