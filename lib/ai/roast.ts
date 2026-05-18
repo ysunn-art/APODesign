@@ -84,12 +84,18 @@ function getClient(): OpenAI {
   return new OpenAI({ apiKey, baseURL: GROQ_BASE_URL });
 }
 
+export interface RoastImageInput {
+  /** Either a public https URL or a base64 data URL (data:image/png;base64,...) */
+  url: string;
+}
+
 export async function generateRoastReport(
-  imageUrl: string,
+  image: string | RoastImageInput,
   userDescription: string
 ): Promise<RoastReport> {
   const client = getClient();
   const model = process.env.GROQ_ROAST_MODEL || DEFAULT_MODEL;
+  const imageUrl = typeof image === "string" ? image : image.url;
 
   const completion = await client.chat.completions.create({
     model,

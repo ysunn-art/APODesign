@@ -77,10 +77,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Insert failed: ${insert.error?.message}` }, { status: 500 });
   }
 
-  // Run AI roast (best effort — failure leaves row in pending state)
+  // Run AI roast (best effort — failure leaves row in pending state).
+  // Send the image inline as a base64 data URL so Groq never has to fetch
+  // it from a public host (some hosts return 403 to server-to-server fetches).
+  const dataUrl = `data:${file.type};base64,${Buffer.from(bytes).toString("base64")}`;
   let roastError: string | null = null;
   try {
-    const report = await generateRoastReport(imageUrl, `${title}\n${description}`);
+    const report = await generateRoastReport({ url: dataUrl }, `${title}\n${description}`);
     const status = statusFromRoast(report);
     const update = await admin
       .from("submissions")
@@ -102,6 +105,8 @@ export async function POST(request: Request) {
     }
   } catch (err) {
     roastError = err instanceof Error ? err.message : String(err);
+    // Surface in Vercel logs so we can debug failures.
+    console.error("[roast] failed for submission", insert.data.id, roastError);
   }
 
   return NextResponse.json({

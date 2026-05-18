@@ -1,14 +1,22 @@
 import type { Submission } from "@/lib/types";
+import { ReroastButton } from "@/components/ReroastButton";
 
-export function RoastReport({ s }: { s: Submission }) {
+export function RoastReport({
+  s,
+  canReroast = false,
+}: {
+  s: Submission;
+  canReroast?: boolean;
+}) {
   if (s.poop_score == null) {
     return (
-      <aside className="border-t border-ink-200 dark:border-ink-800 pt-6">
+      <aside className="border-t border-ink-200 dark:border-ink-800 pt-6 space-y-4">
         <p className="eyebrow mb-2">Roast pending</p>
-        <p className="text-sm text-ink-500 dark:text-ink-400 leading-relaxed">
-          Awaiting AI analysis or moderator review. This report will populate automatically once the
-          submission is processed.
+        <p className="text-sm text-ink-500 dark:text-ink-400 leading-relaxed max-w-[55ch]">
+          Awaiting AI analysis or moderator review. If you&apos;re the submitter or a moderator you
+          can manually re-run the roast below.
         </p>
+        {canReroast && <ReroastButton submissionId={s.id} />}
       </aside>
     );
   }

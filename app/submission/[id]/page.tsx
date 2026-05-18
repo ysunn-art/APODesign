@@ -140,7 +140,7 @@ export default async function SubmissionPage({ params }: { params: { id: string 
           <CommentList submissionId={s.id} initial={comments} authed={!!user} />
         </div>
 
-        <RoastReport s={s} />
+        <RoastReport s={s} canReroast={canDelete} />
       </section>
     </article>
   );
