@@ -33,11 +33,12 @@ const ROAST_TOOL = {
     description: "Submit a structured Design Roast Report for the uploaded image.",
     parameters: {
       type: "object",
+      // NOTE: types are intentionally union'd with "string" because some
+      // Groq-hosted models stringify scalar values in tool-call arguments
+      // (e.g. `"7"` instead of `7`). We coerce on the server side below.
       properties: {
         poop_score: {
-          type: "integer",
-          minimum: 1,
-          maximum: 10,
+          type: ["integer", "string"],
           description: "1 = barely bad, 10 = catastrophic usability failure.",
         },
         heuristics_violated: {
@@ -54,13 +55,11 @@ const ROAST_TOOL = {
           description: "A constructive 1-3 sentence suggestion for how to fix the design.",
         },
         confidence: {
-          type: "number",
-          minimum: 0,
-          maximum: 1,
-          description: "How confident you are that this is a real, analyzable design artifact.",
+          type: ["number", "string"],
+          description: "Float between 0 and 1. How confident you are that this is a real, analyzable design artifact.",
         },
         should_moderate: {
-          type: "boolean",
+          type: ["boolean", "string"],
           description: "True if the image is unsafe, NSFW, off-topic, or otherwise needs human review.",
         },
       },
@@ -119,23 +118,56 @@ export async function generateRoastReport(
     throw new Error("Groq did not return a tool call for submit_roast_report");
   }
 
-  const parsed = JSON.parse(call.function.arguments) as RoastReport;
+  const raw = JSON.parse(call.function.arguments) as Record<string, unknown>;
+  return normalizeRoast(raw);
+}
+
+function normalizeRoast(raw: Record<string, unknown>): RoastReport {
+  const score = coerceNumber(raw.poop_score);
+  const confidence = coerceNumber(raw.confidence);
+  const shouldModerate = coerceBoolean(raw.should_moderate);
 
   if (
-    typeof parsed.poop_score !== "number" ||
-    !Array.isArray(parsed.heuristics_violated) ||
-    typeof parsed.roast_text !== "string" ||
-    typeof parsed.fix_suggestion !== "string" ||
-    typeof parsed.confidence !== "number" ||
-    typeof parsed.should_moderate !== "boolean"
+    score == null ||
+    confidence == null ||
+    shouldModerate == null ||
+    !Array.isArray(raw.heuristics_violated) ||
+    typeof raw.roast_text !== "string" ||
+    typeof raw.fix_suggestion !== "string"
   ) {
-    throw new Error("Groq tool call returned malformed roast report");
+    throw new Error(
+      `Groq returned malformed roast report: ${JSON.stringify(raw).slice(0, 400)}`
+    );
   }
 
-  parsed.poop_score = Math.max(1, Math.min(10, Math.round(parsed.poop_score)));
-  parsed.confidence = Math.max(0, Math.min(1, parsed.confidence));
+  return {
+    poop_score: Math.max(1, Math.min(10, Math.round(score))),
+    heuristics_violated: (raw.heuristics_violated as unknown[]).map((h) => String(h)),
+    roast_text: raw.roast_text,
+    fix_suggestion: raw.fix_suggestion,
+    confidence: Math.max(0, Math.min(1, confidence)),
+    should_moderate: shouldModerate,
+  };
+}
 
-  return parsed;
+function coerceNumber(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = Number(v.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function coerceBoolean(v: unknown): boolean | null {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") {
+    const s = v.trim().toLowerCase();
+    if (s === "true" || s === "yes" || s === "1") return true;
+    if (s === "false" || s === "no" || s === "0") return false;
+  }
+  if (typeof v === "number") return v !== 0;
+  return null;
 }
 
 export function statusFromRoast(report: RoastReport): "approved" | "pending" | "rejected" {
