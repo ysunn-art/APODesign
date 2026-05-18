@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { Submission } from "@/lib/types";
 import { CATEGORY_LABELS } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { DeleteButton } from "@/components/DeleteButton";
 
 export function ModerationList({ initial }: { initial: Submission[] }) {
   const [items, setItems] = useState(initial);
@@ -72,6 +73,11 @@ export function ModerationList({ initial }: { initial: Submission[] }) {
             >
               Reject
             </button>
+            <DeleteButton
+              submissionId={s.id}
+              compact
+              onDeleted={() => setItems((prev) => prev.filter((x) => x.id !== s.id))}
+            />
           </div>
         </article>
       ))}

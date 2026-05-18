@@ -5,6 +5,7 @@ import { RoastReport } from "@/components/RoastReport";
 import { VoteButtons } from "@/components/VoteButtons";
 import { CommentList, type CommentRow } from "@/components/CommentList";
 import { FlagButton } from "@/components/FlagButton";
+import { DeleteButton } from "@/components/DeleteButton";
 import { CATEGORY_LABELS, type Submission } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 
@@ -24,6 +25,11 @@ export default async function SubmissionPage({ params }: { params: { id: string 
 
   if (!submission) notFound();
   const s = submission as Submission;
+
+  const { data: viewerProfile } = user
+    ? await supabase.from("users").select("is_moderator").eq("id", user.id).maybeSingle()
+    : { data: null };
+  const canDelete = !!user && (user.id === s.user_id || !!viewerProfile?.is_moderator);
 
   const [{ data: commentsRaw }, { data: voteRow }, { data: author }] = await Promise.all([
     supabase
@@ -93,6 +99,7 @@ export default async function SubmissionPage({ params }: { params: { id: string 
             authed={!!user}
           />
           <FlagButton submissionId={s.id} authed={!!user} />
+          {canDelete && <DeleteButton submissionId={s.id} redirectTo="/" compact />}
           <Link href="/" className="text-sm text-neutral-500 hover:underline ml-auto">
             ← Back to gallery
           </Link>
