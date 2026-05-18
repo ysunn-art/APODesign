@@ -1,7 +1,7 @@
 # TECHIN 510 Final Project — A Piece of Design
 
-> **Live URL:** _set after first Vercel deploy — see [Deploy](#deploy) below._  
-> Set it in this file (replace this line) once `vercel --prod` returns a URL.
+> **🌐 Live URL:** https://a-piece-of-design.vercel.app  
+> Health check: https://a-piece-of-design.vercel.app/api/health
 
 See [`README2.md`](./README2.md) for the product overview and [`ARCHITECTURE.md`](./ARCHITECTURE.md) for the technical design.
 
