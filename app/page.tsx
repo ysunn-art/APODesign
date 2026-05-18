@@ -1,6 +1,7 @@
 import { getServerSupabase } from "@/lib/supabase/server";
 import { SubmissionCard } from "@/components/SubmissionCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
+import { LiveSubmissions } from "@/components/LiveSubmissions";
 import { CATEGORIES, type Category, type Submission } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -28,9 +29,13 @@ export default async function GalleryPage({ searchParams }: { searchParams: Sear
   return (
     <div>
       <section className="mb-6">
-        <h1 className="text-3xl font-bold mb-1">A Piece of Design 💩</h1>
+        <div className="flex items-center justify-between gap-3 mb-1 flex-wrap">
+          <h1 className="text-3xl font-bold">A Piece of Design 💩</h1>
+          <LiveSubmissions />
+        </div>
         <p className="text-neutral-500">
           Real-world bad design, scored and roasted by AI. Vote on what deserves a trophy.
+          The feed updates in real time as new submissions land.
         </p>
       </section>
 

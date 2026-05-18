@@ -229,3 +229,16 @@ create policy "submissions_upload_auth" on storage.objects for insert
 drop policy if exists "submissions_delete_self" on storage.objects;
 create policy "submissions_delete_self" on storage.objects for delete
   using (bucket_id = 'submissions' and owner = auth.uid());
+
+-- ============================================================
+-- Realtime — live gallery updates
+-- ============================================================
+do $$
+begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'submissions'
+  ) then
+    alter publication supabase_realtime add table public.submissions;
+  end if;
+end$$;
