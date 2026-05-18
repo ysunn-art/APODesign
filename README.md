@@ -1,4 +1,10 @@
-# TECHIN 510 Final Project
+# TECHIN 510 Final Project — A Piece of Design
+
+> **🌐 Live URL:** https://a-piece-of-design.vercel.app  
+> **❤️ Health check:** https://a-piece-of-design.vercel.app/api/health  
+> **🤝 Handoff:** Ready for Final Acceptance Testing. Implementation lives on branch [`feat/full-app-and-deploy`](https://github.com/GIX-Luyao/final-project-codebase-ysunn-art-4/tree/feat/full-app-and-deploy) pending PR review.  
+> Product details: [`README2.md`](./README2.md). Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md). Spec: [`SPEC.md`](./SPEC.md).
+
 ---
 
 ## Overview
