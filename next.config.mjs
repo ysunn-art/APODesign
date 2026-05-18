@@ -11,6 +11,11 @@ const nextConfig = {
   experimental: {
     serverActions: { bodySizeLimit: "12mb" },
   },
+  async redirects() {
+    return [
+      { source: "/hall-of-shame", destination: "/hall-of-fame", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

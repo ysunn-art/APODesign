@@ -73,7 +73,7 @@ app/                   Next.js App Router pages + API routes
   submit/              Submission form
   submission/[id]/     Detail page (RoastReport + voting + comments)
   leaderboard/         Weekly/monthly top
-  hall-of-shame/       All-time top
+  hall-of-fame/        All-time top ("Hall of Famous")
   moderation/          Mod queue (moderator only)
 components/            Shared client components
 lib/ai/roast.ts        Groq tool-call roast pipeline

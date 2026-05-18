@@ -39,7 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <nav className="flex items-center gap-1 sm:gap-2 text-sm">
               <NavLink href="/">Gallery</NavLink>
               <NavLink href="/leaderboard">Leaderboard</NavLink>
-              <NavLink href="/hall-of-shame">Hall of Shame</NavLink>
+              <NavLink href="/hall-of-fame">Hall of Famous</NavLink>
               <Link
                 href="/submit"
                 className="ml-1 sm:ml-2 inline-flex items-center gap-1.5 rounded-full bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900 px-3.5 py-1.5 text-[13px] font-medium hover:opacity-90 active:scale-[0.98] transition"
