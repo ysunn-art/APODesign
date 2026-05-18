@@ -37,10 +37,10 @@ export function LiveSubmissions() {
         className={
           "inline-block h-2 w-2 rounded-full transition " +
           (pulse
-            ? "bg-brand animate-ping"
+            ? "bg-accent animate-ping"
             : connected
-            ? "bg-green-500"
-            : "bg-neutral-400")
+            ? "bg-accent"
+            : "bg-ink-400 dark:bg-ink-600")
         }
       />
       {connected ? "Live" : "Connecting…"}

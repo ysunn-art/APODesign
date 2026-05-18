@@ -1,44 +1,74 @@
 import type { Submission } from "@/lib/types";
-import { scoreEmoji } from "@/lib/format";
 
 export function RoastReport({ s }: { s: Submission }) {
   if (s.poop_score == null) {
     return (
-      <div className="rounded-lg border border-dashed border-neutral-300 dark:border-neutral-700 p-4 text-sm text-neutral-500">
-        Roast report not available yet. This submission is awaiting AI analysis or moderator review.
-      </div>
+      <aside className="border-t border-ink-200 dark:border-ink-800 pt-6">
+        <p className="eyebrow mb-2">Roast pending</p>
+        <p className="text-sm text-ink-500 dark:text-ink-400 leading-relaxed">
+          Awaiting AI analysis or moderator review. This report will populate automatically once the
+          submission is processed.
+        </p>
+      </aside>
     );
   }
+
   return (
-    <div className="rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 p-4 space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="font-semibold">Design Roast Report</h2>
-        <span className="text-lg">
-          {scoreEmoji(s.poop_score)} {s.poop_score}/10
-        </span>
-      </div>
-      {s.roast_text && <p className="text-sm leading-relaxed">{s.roast_text}</p>}
+    <aside className="border-t border-ink-200 dark:border-ink-800 pt-6 space-y-6">
+      <header>
+        <p className="eyebrow mb-3">Design Roast Report</p>
+        <div className="flex items-baseline gap-3">
+          <span className="font-mono text-5xl tabular-nums tracking-tightest text-ink-900 dark:text-ink-50">
+            {s.poop_score}
+          </span>
+          <span className="font-mono text-sm uppercase tracking-[0.16em] text-ink-500 dark:text-ink-400">
+            / 10 violation severity
+          </span>
+        </div>
+      </header>
+
+      {s.roast_text && (
+        <p className="text-[15px] leading-relaxed text-ink-700 dark:text-ink-200 max-w-[55ch]">
+          {s.roast_text}
+        </p>
+      )}
+
       {s.heuristics_violated && s.heuristics_violated.length > 0 && (
-        <div>
-          <h3 className="text-xs uppercase tracking-wide text-neutral-500 mb-1">Heuristics violated</h3>
-          <ul className="flex flex-wrap gap-1.5">
-            {s.heuristics_violated.map((h) => (
+        <section>
+          <p className="eyebrow mb-3">Heuristics violated</p>
+          <ul className="divide-y divide-ink-200 dark:divide-ink-800 border-y border-ink-200 dark:border-ink-800">
+            {s.heuristics_violated.map((h, i) => (
               <li
                 key={h}
-                className="text-xs rounded-full bg-neutral-100 dark:bg-neutral-800 px-2 py-0.5"
+                className="flex items-baseline gap-4 py-2.5 text-sm text-ink-700 dark:text-ink-200"
               >
-                {h}
+                <span className="font-mono text-[11px] tabular-nums text-ink-400 dark:text-ink-500 w-6">
+                  {(i + 1).toString().padStart(2, "0")}
+                </span>
+                <span>{h}</span>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
+
       {s.fix_suggestion && (
-        <div>
-          <h3 className="text-xs uppercase tracking-wide text-neutral-500 mb-1">How to fix it</h3>
-          <p className="text-sm">{s.fix_suggestion}</p>
-        </div>
+        <section>
+          <p className="eyebrow mb-2">How to fix it</p>
+          <p className="text-[15px] leading-relaxed text-ink-700 dark:text-ink-200 max-w-[55ch]">
+            {s.fix_suggestion}
+          </p>
+        </section>
       )}
-    </div>
+
+      {s.ai_confidence != null && (
+        <footer className="flex items-center gap-3 pt-2 border-t border-ink-200 dark:border-ink-800">
+          <span className="eyebrow">AI confidence</span>
+          <span className="font-mono text-xs tabular-nums text-ink-700 dark:text-ink-200">
+            {(s.ai_confidence * 100).toFixed(0)}%
+          </span>
+        </footer>
+      )}
+    </aside>
   );
 }

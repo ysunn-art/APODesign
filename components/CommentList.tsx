@@ -70,7 +70,7 @@ export function CommentList({ submissionId, initial, authed }: Props) {
           <button
             type="submit"
             disabled={!authed || pending || !body.trim()}
-            className="ml-auto rounded-md bg-brand text-white px-3 py-1.5 text-sm hover:bg-brand-dark disabled:opacity-60"
+            className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900 px-4 py-1.5 text-[13px] font-medium hover:opacity-90 active:scale-[0.98] transition disabled:opacity-50"
           >
             Post
           </button>

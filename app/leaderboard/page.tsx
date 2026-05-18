@@ -32,10 +32,10 @@ export default async function LeaderboardPage({
     <Link
       href={`/leaderboard?period=${key}`}
       className={
-        "px-3 py-1.5 rounded-md text-sm border " +
+        "px-4 py-1.5 rounded-full text-[12px] font-mono uppercase tracking-[0.14em] border transition " +
         (period === key
-          ? "bg-brand text-white border-brand"
-          : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800")
+          ? "bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900 border-transparent"
+          : "border-ink-200 dark:border-ink-800 text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-100")
       }
     >
       {label}

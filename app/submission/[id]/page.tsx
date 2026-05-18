@@ -48,68 +48,100 @@ export default async function SubmissionPage({ params }: { params: { id: string 
     supabase.from("users").select("username, avatar_url").eq("id", s.user_id).maybeSingle(),
   ]);
 
-  const comments: CommentRow[] = (commentsRaw || []).map((c: {
-    id: string;
-    user_id: string;
-    body: string;
-    created_at: string;
-    users: { username: string | null } | { username: string | null }[] | null;
-  }) => {
-    const u = Array.isArray(c.users) ? c.users[0] : c.users;
-    return {
-      id: c.id,
-      user_id: c.user_id,
-      body: c.body,
-      created_at: c.created_at,
-      username: u?.username ?? null,
-    };
-  });
+  const comments: CommentRow[] = (commentsRaw || []).map(
+    (c: {
+      id: string;
+      user_id: string;
+      body: string;
+      created_at: string;
+      users: { username: string | null } | { username: string | null }[] | null;
+    }) => {
+      const u = Array.isArray(c.users) ? c.users[0] : c.users;
+      return {
+        id: c.id,
+        user_id: c.user_id,
+        body: c.body,
+        created_at: c.created_at,
+        username: u?.username ?? null,
+      };
+    }
+  );
 
   const userValue: -1 | 0 | 1 = (voteRow?.value ?? 0) as -1 | 0 | 1;
 
   return (
-    <article className="grid gap-6 lg:grid-cols-3">
-      <div className="lg:col-span-2 space-y-4">
-        <div className="rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.image_url} alt={s.title} className="w-full max-h-[600px] object-contain bg-neutral-100 dark:bg-neutral-800" />
+    <article className="space-y-12">
+      <header className="space-y-6">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 eyebrow hover:text-ink-900 dark:hover:text-ink-100 transition"
+        >
+          <span>←</span>
+          <span>Back to gallery</span>
+        </Link>
+        <div className="grid gap-6 lg:grid-cols-[auto_1fr] lg:gap-10 lg:items-end">
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-3 eyebrow">
+              <span>{CATEGORY_LABELS[s.category]}</span>
+              <span className="h-px w-4 bg-ink-300 dark:bg-ink-700" />
+              <span>@{author?.username ?? "anon"}</span>
+              <span className="h-px w-4 bg-ink-300 dark:bg-ink-700" />
+              <span>{timeAgo(s.created_at)}</span>
+              {s.status !== "approved" && (
+                <span className="rounded-full border border-amber-500/40 text-amber-700 dark:text-amber-300 px-2 py-0.5 normal-case tracking-normal text-[11px] font-medium">
+                  {s.status}
+                </span>
+              )}
+            </div>
+            <h1 className="text-4xl md:text-6xl font-medium tracking-tightest leading-[0.98] text-ink-900 dark:text-ink-50 max-w-[18ch]">
+              {s.title}
+            </h1>
+          </div>
         </div>
-        <div>
-          <div className="text-xs text-neutral-500 mb-1 flex items-center gap-2">
-            <span>{CATEGORY_LABELS[s.category]}</span>
-            <span>·</span>
-            <span>{author?.username ?? "anon"}</span>
-            <span>·</span>
-            <span>{timeAgo(s.created_at)}</span>
-            {s.status !== "approved" && (
-              <span className="ml-2 rounded bg-yellow-100 dark:bg-yellow-900 text-yellow-800 dark:text-yellow-200 px-1.5 py-0.5">
-                {s.status}
-              </span>
+      </header>
+
+      <section className="grid gap-10 lg:grid-cols-[1.6fr_1fr]">
+        <div className="space-y-10">
+          <figure className="overflow-hidden rounded-bento bg-ink-100 dark:bg-ink-900 ring-1 ring-inset ring-ink-200/60 dark:ring-ink-800/80">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={s.image_url}
+              alt={s.title}
+              className="w-full max-h-[720px] object-contain bg-ink-100 dark:bg-ink-900"
+            />
+          </figure>
+
+          {s.description && (
+            <div className="prose-spacing">
+              <p className="eyebrow mb-3">Submitter&apos;s note</p>
+              <p className="text-[15px] leading-relaxed text-ink-700 dark:text-ink-200 max-w-[60ch] whitespace-pre-wrap">
+                {s.description}
+              </p>
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-5 border-y border-ink-200 dark:border-ink-800 py-4">
+            <VoteButtons
+              submissionId={s.id}
+              initialScore={s.vote_score}
+              initialUserValue={userValue}
+              authed={!!user}
+            />
+            <span className="h-5 w-px bg-ink-200 dark:bg-ink-800" />
+            <FlagButton submissionId={s.id} authed={!!user} />
+            {canDelete && (
+              <>
+                <span className="h-5 w-px bg-ink-200 dark:bg-ink-800" />
+                <DeleteButton submissionId={s.id} redirectTo="/" compact />
+              </>
             )}
           </div>
-          <h1 className="text-2xl font-bold">{s.title}</h1>
-          {s.description && <p className="mt-2 text-sm whitespace-pre-wrap">{s.description}</p>}
+
+          <CommentList submissionId={s.id} initial={comments} authed={!!user} />
         </div>
 
-        <div className="flex items-center gap-4">
-          <VoteButtons
-            submissionId={s.id}
-            initialScore={s.vote_score}
-            initialUserValue={userValue}
-            authed={!!user}
-          />
-          <FlagButton submissionId={s.id} authed={!!user} />
-          {canDelete && <DeleteButton submissionId={s.id} redirectTo="/" compact />}
-          <Link href="/" className="text-sm text-neutral-500 hover:underline ml-auto">
-            ← Back to gallery
-          </Link>
-        </div>
-
-        <CommentList submissionId={s.id} initial={comments} authed={!!user} />
-      </div>
-      <aside>
         <RoastReport s={s} />
-      </aside>
+      </section>
     </article>
   );
 }

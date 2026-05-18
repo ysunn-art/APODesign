@@ -49,28 +49,42 @@ export function VoteButtons({ submissionId, initialScore, initialUserValue, auth
     });
   }
 
-  const btn = (dir: -1 | 1, label: string) => (
-    <button
-      onClick={() => cast(dir)}
-      disabled={pending}
-      aria-pressed={userValue === dir}
-      className={
-        "px-2 py-1 rounded text-sm border transition " +
-        (userValue === dir
-          ? "bg-brand text-white border-brand"
-          : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800")
-      }
-    >
-      {label}
-    </button>
-  );
+  const btn = (dir: -1 | 1, path: string, label: string) => {
+    const isActive = userValue === dir;
+    const accent =
+      dir === 1
+        ? "text-accent border-accent/40 hover:bg-accent/10"
+        : "text-red-600 border-red-500/40 hover:bg-red-500/10 dark:text-red-400";
+    return (
+      <button
+        onClick={() => cast(dir)}
+        disabled={pending}
+        aria-pressed={isActive}
+        aria-label={label}
+        className={
+          "inline-flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.94] disabled:opacity-60 " +
+          (isActive
+            ? dir === 1
+              ? "bg-accent text-accent-ink border-accent"
+              : "bg-red-600 text-white border-red-600"
+            : `border-ink-200 dark:border-ink-800 text-ink-500 dark:text-ink-400 ${accent}`)
+        }
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+          <path d={path} />
+        </svg>
+      </button>
+    );
+  };
 
   return (
-    <div className="inline-flex items-center gap-2">
-      {btn(1, "▲")}
-      <span className="font-semibold w-8 text-center">{score}</span>
-      {btn(-1, "▼")}
-      {error && <span className="text-xs text-red-600 ml-2">{error}</span>}
+    <div className="inline-flex items-center gap-3">
+      {btn(1, "M6 15l6-6 6 6", "Upvote")}
+      <span className="font-mono tabular-nums text-lg w-10 text-center text-ink-900 dark:text-ink-50">
+        {score >= 0 ? `+${score}` : score}
+      </span>
+      {btn(-1, "M6 9l6 6 6-6", "Downvote")}
+      {error && <span className="text-xs text-red-600 dark:text-red-400 ml-2">{error}</span>}
     </div>
   );
 }

@@ -113,7 +113,7 @@ export default function SubmitForm() {
       <button
         type="submit"
         disabled={loading}
-        className="rounded-md bg-brand text-white px-4 py-2 hover:bg-brand-dark disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-full bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900 px-5 py-2.5 text-sm font-medium hover:opacity-90 active:scale-[0.98] transition disabled:opacity-60"
       >
         {loading ? "Roasting…" : "Submit for roasting"}
       </button>

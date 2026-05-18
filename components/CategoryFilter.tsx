@@ -24,10 +24,10 @@ export function CategoryFilter() {
         key={value ?? "all"}
         href={href(value)}
         className={
-          "rounded-full px-3 py-1 text-sm border transition " +
+          "rounded-full px-3.5 py-1.5 text-[12px] font-mono uppercase tracking-[0.14em] transition border " +
           (isActive
-            ? "bg-brand text-white border-brand"
-            : "border-neutral-300 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-neutral-800")
+            ? "bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900 border-transparent"
+            : "border-ink-200 dark:border-ink-800 text-ink-600 dark:text-ink-400 hover:text-ink-900 dark:hover:text-ink-100 hover:border-ink-400 dark:hover:border-ink-600")
         }
       >
         {label}
@@ -36,7 +36,7 @@ export function CategoryFilter() {
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mb-4">
+    <div className="flex flex-wrap gap-2">
       {chip("All", null)}
       {CATEGORIES.map((c) => chip(CATEGORY_LABELS[c], c))}
     </div>
