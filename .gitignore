@@ -3,9 +3,10 @@
 /node_modules
 /.next
 /out
+# Env files — ignore everything except the committed template
 .env
-.env.local
-.env*.local
+.env.*
+!.env.example
 .vercel
 .agents/
 .claude/
