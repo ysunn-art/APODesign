@@ -122,7 +122,7 @@ export async function generateRoastReport(
   return normalizeRoast(raw);
 }
 
-function normalizeRoast(raw: Record<string, unknown>): RoastReport {
+export function normalizeRoast(raw: Record<string, unknown>): RoastReport {
   const score = coerceNumber(raw.poop_score);
   const confidence = coerceNumber(raw.confidence);
   const shouldModerate = coerceBoolean(raw.should_moderate);
