@@ -9,6 +9,7 @@ export const maxDuration = 60;
 
 const MAX_BYTES = 10 * 1024 * 1024; // 10MB
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
+const MAX_SUBMISSIONS_PER_DAY = 5;
 
 export async function POST(request: Request) {
   const supabase = getServerSupabase();
@@ -17,6 +18,20 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  // Rate limit: max 5 submissions per user per rolling 24h window.
+  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const { count: recentCount } = await getAdminSupabase()
+    .from("submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", since);
+  if ((recentCount ?? 0) >= MAX_SUBMISSIONS_PER_DAY) {
+    return NextResponse.json(
+      { error: `Rate limit reached: max ${MAX_SUBMISSIONS_PER_DAY} submissions per day.` },
+      { status: 429 }
+    );
   }
 
   const form = await request.formData();

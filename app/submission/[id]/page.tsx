@@ -126,6 +126,7 @@ export default async function SubmissionPage({ params }: { params: { id: string 
               initialScore={s.vote_score}
               initialUserValue={userValue}
               authed={!!user}
+              isOwner={!!user && user.id === s.user_id}
             />
             <span className="h-5 w-px bg-ink-200 dark:bg-ink-800" />
             <FlagButton submissionId={s.id} authed={!!user} />

@@ -8,14 +8,33 @@ interface Props {
   initialScore: number;
   initialUserValue: -1 | 0 | 1;
   authed: boolean;
+  /** True when the viewer owns this submission — voting is disabled. */
+  isOwner?: boolean;
 }
 
-export function VoteButtons({ submissionId, initialScore, initialUserValue, authed }: Props) {
+export function VoteButtons({
+  submissionId,
+  initialScore,
+  initialUserValue,
+  authed,
+  isOwner = false,
+}: Props) {
   const [score, setScore] = useState(initialScore);
   const [userValue, setUserValue] = useState<-1 | 0 | 1>(initialUserValue);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  if (isOwner) {
+    return (
+      <div className="inline-flex items-center gap-3">
+        <span className="font-mono tabular-nums text-lg w-10 text-center text-ink-900 dark:text-ink-50">
+          {score >= 0 ? `+${score}` : score}
+        </span>
+        <span className="text-xs text-ink-500 dark:text-ink-400">votes · your submission</span>
+      </div>
+    );
+  }
 
   async function cast(next: -1 | 1) {
     if (!authed) {
@@ -24,6 +43,7 @@ export function VoteButtons({ submissionId, initialScore, initialUserValue, auth
     }
     const target = userValue === next ? 0 : next;
     const optimisticScore = score - userValue + target;
+    const prev = { score, userValue };
     setUserValue(target as -1 | 0 | 1);
     setScore(optimisticScore);
     setError(null);
@@ -41,9 +61,9 @@ export function VoteButtons({ submissionId, initialScore, initialUserValue, auth
         }
         router.refresh();
       } catch (err) {
-        // rollback
-        setUserValue(initialUserValue);
-        setScore(initialScore);
+        // rollback to the state before this attempt
+        setUserValue(prev.userValue);
+        setScore(prev.score);
         setError(err instanceof Error ? err.message : "Vote failed");
       }
     });
