@@ -4,10 +4,15 @@ name: Deploy to Production
 # Vercel's native Git integration is unavailable for private org repos on the
 # Hobby plan, so this workflow deploys via the Vercel CLI instead.
 #
+# We let Vercel build remotely (a plain `vercel deploy --prod`) rather than
+# building in CI with `--prebuilt`. Remote builds run with the project's
+# configured environment variables (e.g. NEXT_PUBLIC_SUPABASE_URL), which must
+# be present at build time for Next to inline them into the Edge middleware.
+#
 # Required setup (one time):
 #   - Add a repository secret VERCEL_TOKEN (create at
-#     https://vercel.com/account/tokens). The org/project IDs below are not
-#     secret — they live in .vercel/project.json.
+#     https://vercel.com/account/tokens, scoped to the project's team). The
+#     org/project IDs below are not secret — they live in .vercel/project.json.
 
 on:
   push:
@@ -31,9 +36,6 @@ jobs:
           node-version: "20"
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-      - name: Build
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy to production
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        # Remote build on Vercel — env vars are applied automatically.
+        run: vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
