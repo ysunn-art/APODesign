@@ -45,3 +45,19 @@ export interface RoastReport {
   confidence: number;
   should_moderate: boolean;
 }
+
+export interface DraftSubmission {
+  pageNumber: number;
+  imageBase64: string;          // data:image/png;base64,...
+  title: string;
+  category: Category;
+  poop_score: number;
+  heuristics_violated: string[];
+  roast_text: string;
+  fix_suggestion: string;
+  confidence: number;
+  should_moderate: boolean;
+}
+
+// Same shape as DraftSubmission. Alias makes publish-route intent explicit.
+export type EditedDraft = DraftSubmission;
