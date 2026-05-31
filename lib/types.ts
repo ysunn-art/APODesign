@@ -48,14 +48,18 @@ export interface RoastReport {
 
 export interface DraftSubmission {
   pageNumber: number;
-  imageBase64: string;          // data:image/png;base64,...
+  /** data:image/png;base64,... — may be large; keep render scale low to stay under Vercel's 4.5 MB response limit */
+  imageBase64: string;
   title: string;
   category: Category;
+  /** 1–10 severity score */
   poop_score: number;
   heuristics_violated: string[];
   roast_text: string;
   fix_suggestion: string;
+  /** 0.0–1.0 AI confidence */
   confidence: number;
+  /** Retained from RoastReport; used to auto-deselect low-quality pages in the review UI */
   should_moderate: boolean;
 }
 
