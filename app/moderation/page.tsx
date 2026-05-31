@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { ModerationList } from "./ModerationList";
@@ -41,7 +42,15 @@ export default async function ModerationPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-2">🛡️ Moderation Queue</h1>
+      <div className="flex items-center justify-between mb-2">
+        <h1 className="text-3xl font-bold">🛡️ Moderation Queue</h1>
+        <Link
+          href="/moderation/import"
+          className="inline-flex items-center gap-2 rounded-full border border-ink-200 dark:border-ink-800 px-4 py-2 text-sm font-medium hover:bg-ink-100 dark:hover:bg-ink-900 transition"
+        >
+          📄 Import from PDF
+        </Link>
+      </div>
       <p className="text-neutral-500 mb-6">{pending.length} submission(s) awaiting review.</p>
       <ModerationList initial={pending} />
     </div>
