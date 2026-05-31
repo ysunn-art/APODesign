@@ -16,6 +16,33 @@ interface EditState {
   selected: boolean;
 }
 
+const STEPS: { id: Step; label: string }[] = [
+  { id: "upload", label: "Upload" },
+  { id: "processing", label: "Processing" },
+  { id: "review", label: "Review & Publish" },
+];
+
+const StepBar = ({ active }: { active: Step }) => (
+  <div className="flex items-center gap-1 mb-8 font-mono text-[11px] uppercase tracking-[0.14em]">
+    {STEPS.map(({ id, label }, i) => (
+      <div key={id} className="flex items-center gap-1">
+        <span
+          className={`px-3 py-1 rounded-full ${
+            id === active
+              ? "bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900"
+              : "text-ink-400 dark:text-ink-500"
+          }`}
+        >
+          {i + 1}. {label}
+        </span>
+        {i < STEPS.length - 1 && (
+          <span className="h-px w-4 bg-ink-200 dark:bg-ink-800" />
+        )}
+      </div>
+    ))}
+  </div>
+);
+
 export default function ImportPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -31,6 +58,11 @@ export default function ImportPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0] ?? null;
+    if (f && f.size > 20 * 1024 * 1024) {
+      setError("File exceeds the 20 MB limit.");
+      setFile(null);
+      return;
+    }
     setFile(f);
     setError(null);
   }
@@ -39,30 +71,23 @@ export default function ImportPage() {
     if (!file) return;
     setError(null);
     setStep("processing");
-
-    const form = new FormData();
-    form.append("file", file);
-
-    const res = await fetch("/api/moderation/import", {
-      method: "POST",
-      body: form,
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      setError(data.error ?? "Processing failed");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/moderation/import", { method: "POST", body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Processing failed");
+        setStep("upload");
+        return;
+      }
+      const drafts: DraftSubmission[] = data.drafts;
+      setEdits(drafts.map((d) => ({ draft: d, selected: d.confidence >= 0.4 })));
+      setStep("review");
+    } catch {
+      setError("Network error — please try again.");
       setStep("upload");
-      return;
     }
-
-    const drafts: DraftSubmission[] = data.drafts;
-    setEdits(
-      drafts.map((d) => ({
-        draft: d,
-        selected: d.confidence >= 0.4,
-      }))
-    );
-    setStep("review");
   }
 
   function updateDraft(index: number, patch: Partial<DraftSubmission>) {
@@ -88,45 +113,22 @@ export default function ImportPage() {
     if (approved.length === 0) return;
     setPublishing(true);
     setError(null);
-
-    const res = await fetch("/api/moderation/import/publish", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ drafts: approved }),
-    });
-    const data = await res.json();
-    setPublishResult(data);
-    setPublishing(false);
+    try {
+      const res = await fetch("/api/moderation/import/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ drafts: approved }),
+      });
+      const data = await res.json();
+      setPublishResult(data);
+    } catch {
+      setError("Network error — publish failed. Please try again.");
+    } finally {
+      setPublishing(false);
+    }
   }
 
   const selectedCount = edits.filter((e) => e.selected).length;
-
-  const STEPS: { id: Step; label: string }[] = [
-    { id: "upload", label: "Upload" },
-    { id: "processing", label: "Processing" },
-    { id: "review", label: "Review & Publish" },
-  ];
-
-  const StepBar = ({ active }: { active: Step }) => (
-    <div className="flex items-center gap-1 mb-8 font-mono text-[11px] uppercase tracking-[0.14em]">
-      {STEPS.map(({ id, label }, i) => (
-        <div key={id} className="flex items-center gap-1">
-          <span
-            className={`px-3 py-1 rounded-full ${
-              id === active
-                ? "bg-ink-900 dark:bg-ink-50 text-ink-50 dark:text-ink-900"
-                : "text-ink-400 dark:text-ink-500"
-            }`}
-          >
-            {i + 1}. {label}
-          </span>
-          {i < STEPS.length - 1 && (
-            <span className="h-px w-4 bg-ink-200 dark:bg-ink-800" />
-          )}
-        </div>
-      ))}
-    </div>
-  );
 
   // ── Success screen ────────────────────────────────────────────────────
   if (publishResult) {
@@ -173,6 +175,12 @@ export default function ImportPage() {
         <div
           className="border-2 border-dashed border-ink-300 dark:border-ink-700 rounded-bento p-12 text-center cursor-pointer hover:border-ink-600 dark:hover:border-ink-400 transition"
           onClick={() => fileRef.current?.click()}
+          onDragOver={(ev) => ev.preventDefault()}
+          onDrop={(ev) => {
+            ev.preventDefault();
+            const f = ev.dataTransfer.files?.[0] ?? null;
+            if (f) { setFile(f); setError(null); }
+          }}
         >
           <div className="text-4xl mb-3">📄</div>
           <p className="font-medium text-ink-900 dark:text-ink-50 mb-1">
@@ -267,7 +275,7 @@ export default function ImportPage() {
           const isLowConfidence = e.draft.confidence < 0.4;
           return (
             <div
-              key={i}
+              key={e.draft.pageNumber}
               className={`border rounded-bento p-4 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-4 transition-colors ${
                 e.selected
                   ? "border-ink-900 dark:border-ink-100"
