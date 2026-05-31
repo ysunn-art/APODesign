@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase/server";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import type { EditedDraft } from "@/lib/types";
+import { CATEGORIES, type EditedDraft } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -31,12 +31,36 @@ export async function POST(request: Request) {
   }
   const drafts: EditedDraft[] = body.drafts;
 
+  const MAX_DRAFTS = 20;
+  if (drafts.length > MAX_DRAFTS) {
+    return NextResponse.json(
+      { error: `Too many drafts: maximum ${MAX_DRAFTS} per request` },
+      { status: 400 }
+    );
+  }
+
   const admin = getAdminSupabase();
   let published = 0;
   const errors: string[] = [];
 
   for (const draft of drafts) {
     try {
+      if (!draft.imageBase64.startsWith("data:image/png;base64,")) {
+        throw new Error("imageBase64 must be a PNG data URL");
+      }
+      if (!draft.title || typeof draft.title !== "string" || draft.title.length > 140) {
+        throw new Error("Invalid title (required, ≤140 chars)");
+      }
+      if (!CATEGORIES.includes(draft.category)) {
+        throw new Error(`Invalid category: ${draft.category}`);
+      }
+      if (typeof draft.poop_score !== "number" || draft.poop_score < 1 || draft.poop_score > 10) {
+        throw new Error("poop_score must be 1–10");
+      }
+      if (!Array.isArray(draft.heuristics_violated)) {
+        throw new Error("heuristics_violated must be an array");
+      }
+
       // Strip the data URL prefix to get raw base64
       const base64Data = draft.imageBase64.split(",")[1];
       if (!base64Data) throw new Error("Invalid imageBase64");
@@ -67,10 +91,15 @@ export async function POST(request: Request) {
         fix_suggestion: draft.fix_suggestion,
         ai_confidence: draft.confidence,
       });
-      if (insertError) throw new Error(`Insert failed: ${insertError.message}`);
+      if (insertError) {
+        // Clean up the orphaned Storage object to avoid leaking publicly-accessible files
+        await admin.storage.from("submissions").remove([objectPath]).catch(() => {});
+        throw new Error(`Insert failed: ${insertError.message}`);
+      }
 
       published++;
     } catch (err) {
+      console.error("[publish] failed for page", draft.pageNumber, err);
       errors.push(
         `Page ${draft.pageNumber}: ${err instanceof Error ? err.message : String(err)}`
       );
