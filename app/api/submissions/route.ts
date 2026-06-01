@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   const title = String(form.get("title") || "").trim();
   const description = String(form.get("description") || "").trim();
   const category = String(form.get("category") || "") as Category;
+  const author = String(form.get("author") || "").trim() || null;
 
   if (!(file instanceof File)) {
     return NextResponse.json({ error: "Image file is required" }, { status: 400 });
@@ -63,11 +64,15 @@ export async function POST(request: Request) {
   const admin = getAdminSupabase();
   const ext = file.name.includes(".") ? file.name.split(".").pop() : file.type.split("/")[1];
   const objectPath = `${user.id}/${crypto.randomUUID()}.${ext}`;
-  const bytes = new Uint8Array(await file.arrayBuffer());
+  const arrayBuffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(arrayBuffer);
+  // Use Blob for the storage upload — more reliable than Uint8Array with the
+  // Supabase SDK in Node.js (avoids potential binary serialization issues).
+  const uploadBlob = new Blob([arrayBuffer], { type: file.type });
 
   const upload = await admin.storage
     .from("submissions")
-    .upload(objectPath, bytes, { contentType: file.type, upsert: false });
+    .upload(objectPath, uploadBlob, { contentType: file.type, upsert: false });
   if (upload.error) {
     return NextResponse.json({ error: `Upload failed: ${upload.error.message}` }, { status: 500 });
   }
@@ -84,6 +89,7 @@ export async function POST(request: Request) {
       title,
       description,
       category,
+      author,
       status: "pending",
     })
     .select("*")
@@ -99,7 +105,9 @@ export async function POST(request: Request) {
   let roastError: string | null = null;
   try {
     const report = await generateRoastReport({ url: dataUrl }, `${title}\n${description}`);
-    const status = statusFromRoast(report);
+    // GIX submissions are curated by moderators — always approve regardless of
+    // AI confidence so they appear immediately in the GIX Hall of Famous.
+    const status = category === "gix" ? "approved" : statusFromRoast(report);
     const update = await admin
       .from("submissions")
       .update({

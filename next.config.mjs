@@ -10,6 +10,9 @@ const nextConfig = {
   },
   experimental: {
     serverActions: { bodySizeLimit: "12mb" },
+    // Prevent Next.js 14 from bundling pdfjs-dist/canvas so they load as
+    // native Node.js modules and resolve the worker path correctly at runtime.
+    serverComponentsExternalPackages: ["pdfjs-dist", "canvas"],
   },
   async redirects() {
     return [

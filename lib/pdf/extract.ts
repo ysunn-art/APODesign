@@ -1,4 +1,5 @@
 import { createCanvas } from "canvas";
+import { join } from "path";
 
 const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
 const MAX_PAGES = 20;
@@ -10,45 +11,80 @@ export function validatePdfConstraints(buffer: Buffer): void {
   }
 }
 
+// pdfjs-dist v3 requires a canvas factory for Node.js so it can create
+// intermediate canvases for image operations without touching the browser DOM.
+class NodeCanvasFactory {
+  create(width: number, height: number) {
+    const canvas = createCanvas(width, height);
+    const context = canvas.getContext("2d");
+    return { canvas, context };
+  }
+
+  reset(
+    canvasAndContext: { canvas: ReturnType<typeof createCanvas>; context: unknown },
+    width: number,
+    height: number
+  ) {
+    canvasAndContext.canvas.width = width;
+    canvasAndContext.canvas.height = height;
+  }
+
+  destroy(canvasAndContext: {
+    canvas: ReturnType<typeof createCanvas>;
+    context: unknown;
+  }) {
+    canvasAndContext.canvas.width = 0;
+    canvasAndContext.canvas.height = 0;
+  }
+}
+
 export async function extractPdfPages(
   buffer: Buffer,
   maxPages = MAX_PAGES
 ): Promise<string[]> {
   validatePdfConstraints(buffer);
 
-  // Dynamic import keeps Next.js from bundling this ESM module into the client.
-  // The legacy build disables the worker automatically in Node.js environments.
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  // pdfjs-dist v3 legacy build — explicit Node.js support with NodeCanvasFactory.
+  // Dynamic import keeps Next.js from bundling it into the client.
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.js");
+  pdfjs.GlobalWorkerOptions.workerSrc = join(
+    process.cwd(),
+    "node_modules/pdfjs-dist/legacy/build/pdf.worker.js"
+  );
 
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+  const canvasFactory = new NodeCanvasFactory();
+
+  const loadingTask = (pdfjs as any).getDocument({
+    data: new Uint8Array(buffer),
+    canvasFactory,
+    verbosity: 0,
+  });
   const pdf = await loadingTask.promise;
-  try {
-    const pageCount = Math.min(pdf.numPages, maxPages);
-    const results: string[] = [];
 
+  const pageCount = Math.min(pdf.numPages, maxPages);
+  const results: string[] = [];
+
+  try {
     for (let i = 1; i <= pageCount; i++) {
       const page = await pdf.getPage(i);
       const viewport = page.getViewport({ scale: RENDER_SCALE });
-      const canvas = createCanvas(
+      const { canvas, context } = canvasFactory.create(
         Math.round(viewport.width),
         Math.round(viewport.height)
       );
-      const ctx = canvas.getContext("2d");
 
       await page.render({
-        // pdfjs-dist v6 uses params.canvas when provided (ignores canvasContext internally).
-        // Pass canvas explicitly as a defensive guard for node-canvas compatibility.
-        canvasContext: ctx as unknown as CanvasRenderingContext2D,
-        canvas: canvas as unknown as HTMLCanvasElement,
+        canvasContext: context,
         viewport,
       }).promise;
 
       results.push(canvas.toDataURL("image/png"));
+      canvasFactory.destroy({ canvas, context });
       page.cleanup();
     }
-
-    return results;
   } finally {
     await loadingTask.destroy().catch(() => {});
   }
+
+  return results;
 }

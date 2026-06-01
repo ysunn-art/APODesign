@@ -5,6 +5,7 @@ export const CATEGORIES = [
   "signage",
   "packaging",
   "other",
+  "gix",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];
@@ -16,6 +17,7 @@ export const CATEGORY_LABELS: Record<Category, string> = {
   signage: "Signage",
   packaging: "Packaging",
   other: "Other",
+  gix: "GIX",
 };
 
 export type SubmissionStatus = "pending" | "approved" | "rejected";
@@ -34,6 +36,7 @@ export interface Submission {
   fix_suggestion: string | null;
   ai_confidence: number | null;
   vote_score: number;
+  author: string | null;
   created_at: string;
 }
 

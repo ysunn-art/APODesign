@@ -2,7 +2,9 @@
   "name": "a-piece-of-design",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -19,7 +21,7 @@
     "geist": "^1.7.0",
     "next": "14.2.16",
     "openai": "^4.67.3",
-    "pdfjs-dist": "^6.0.227",
+    "pdfjs-dist": "^3.11.174",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
