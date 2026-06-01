@@ -1,7 +1,7 @@
-# TECHIN 510 Final Project — A Piece of Design
+# APO Design — A Piece of Design
 
-> **🌐 Live URL:** https://a-piece-of-design.vercel.app  
-> **❤️ Health check:** https://a-piece-of-design.vercel.app/api/health  
+> **🌐 Live URL:** https://apodesign.vercel.app  
+> **❤️ Health check:** https://apodesign.vercel.app/api/health  
 > Product overview: [`README2.md`](./README2.md). Architecture: [`ARCHITECTURE.md`](./ARCHITECTURE.md). Spec: [`SPEC.md`](./SPEC.md).
 
 ---
