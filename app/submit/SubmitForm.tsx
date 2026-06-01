@@ -15,10 +15,13 @@ export default function SubmitForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const MAX_FILE_MB = 4;
+
   function setImageFile(f: File) {
-    // Keep the original File for upload (preserves exact bytes).
-    // Only create a typed Blob for the preview URL — clipboard items sometimes
-    // have no MIME type, which prevents <img> from displaying them.
+    if (f.size > MAX_FILE_MB * 1024 * 1024) {
+      setError(`Image too large — please use a file under ${MAX_FILE_MB} MB.`);
+      return;
+    }
     const previewBlob = f.type.startsWith("image/")
       ? f
       : new Blob([f], { type: "image/png" });
@@ -65,13 +68,23 @@ export default function SubmitForm() {
 
     try {
       const res = await fetch("/api/submissions", { method: "POST", body: form });
-      const json = await res.json();
+      // Guard against non-JSON responses (e.g. Vercel 413 body-too-large)
+      const text = await res.text();
+      let json: Record<string, unknown> = {};
+      try { json = JSON.parse(text); } catch { /* non-JSON body */ }
+
       if (!res.ok) {
-        setError(json.error || "Submission failed");
+        if (res.status === 413 || text.toLowerCase().includes("too large") || text.toLowerCase().includes("entity")) {
+          setError("Image too large — please use a file under 4 MB.");
+        } else {
+          setError((json.error as string) || "Submission failed");
+        }
         setLoading(false);
         return;
       }
-      router.push(`/submission/${json.submission.id}`);
+      const sub = (json as { submission?: { id: string } }).submission;
+      if (!sub?.id) { setError("Submission failed"); setLoading(false); return; }
+      router.push(`/submission/${sub.id}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submission failed");
@@ -111,7 +124,7 @@ export default function SubmitForm() {
                 className="hidden"
               />
             </label>
-            <p className="text-xs text-neutral-400">JPEG, PNG, WebP, or GIF · max 10 MB</p>
+            <p className="text-xs text-neutral-400">JPEG, PNG, WebP, or GIF · max 4 MB</p>
           </div>
         )}
       </div>
