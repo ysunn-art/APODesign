@@ -20,9 +20,13 @@ export function DesignTicker() {
       .select("id, title, image_url, poop_score, category, roast_text")
       .eq("status", "approved")
       .order("created_at", { ascending: false })
-      .limit(12)
+      .limit(20)
       .then(({ data }) => {
-        if (data && data.length > 0) setSubmissions(data as Submission[]);
+        if (data && data.length > 0) {
+          // Shuffle for random order each page load
+          const shuffled = [...data].sort(() => Math.random() - 0.5);
+          setSubmissions(shuffled as Submission[]);
+        }
       });
   }, []);
 

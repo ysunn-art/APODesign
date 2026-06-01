@@ -19,15 +19,14 @@ export function VoteButtons({
   authed,
   isOwner = false,
 }: Props) {
+  // Score is always sourced from DB via realtime — no optimistic override
   const [score, setScore] = useState(initialScore);
-  // Treat any non-1 value (including legacy -1) as "not voted"
   const [voted, setVoted] = useState(initialUserValue === 1);
-  const [currentValue] = useState(initialUserValue);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  // Real-time subscription — keeps vote count in sync without page refresh
+  // Keep score in sync with DB in real time
   useEffect(() => {
     const supabase = getBrowserSupabase();
     const channel = supabase
@@ -52,18 +51,14 @@ export function VoteButtons({
 
   async function handleVote() {
     if (!authed) { setError("Sign in to vote"); return; }
-    const next = voted ? 0 : 1;
-    // Subtract the current stored value (handles legacy -1 votes too), then add new value
-    const optimistic = score - currentValue + next;
-    const prev = { score, voted };
-    setVoted(next === 1);
-    setScore(optimistic);
+    if (voted) return; // one-time only — cannot cancel
+
     setError(null);
 
     startTransition(async () => {
       try {
         const res = await fetch("/api/votes", {
-          method: next === 0 ? "DELETE" : "POST",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ submission_id: submissionId, value: 1 }),
         });
@@ -71,11 +66,11 @@ export function VoteButtons({
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error || "Vote failed");
         }
-        // Delay refresh so DB trigger propagates before server re-fetches
+        // Mark as voted — permanent, no toggle
+        setVoted(true);
+        // Let realtime update the score; also refresh server cache after trigger propagates
         setTimeout(() => router.refresh(), 800);
       } catch (err) {
-        setVoted(prev.voted);
-        setScore(prev.score);
         setError(err instanceof Error ? err.message : "Vote failed");
       }
     });
@@ -103,17 +98,18 @@ export function VoteButtons({
     <div className="flex flex-col items-start gap-2">
       <button
         onClick={handleVote}
-        disabled={pending}
+        disabled={pending || voted}
         aria-pressed={voted}
-        aria-label={voted ? "Remove vote" : "Vote for worst design"}
+        aria-label={voted ? "Already voted" : "Vote for 拉完了"}
         className={
-          "group inline-flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium transition-all active:scale-[0.96] disabled:opacity-60 " +
+          "group inline-flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium transition-all active:scale-[0.96] " +
           (voted
-            ? "bg-accent text-white border border-accent shadow-lg shadow-accent/25"
+            ? "bg-accent text-white border border-accent cursor-not-allowed opacity-90"
+            : pending
+            ? "border border-ink-200 dark:border-ink-700 text-ink-400 opacity-60 cursor-wait"
             : "border border-ink-200 dark:border-ink-700 text-ink-700 dark:text-ink-200 hover:border-accent hover:text-accent hover:bg-accent/5")
         }
       >
-        {/* Arrow icon */}
         <svg
           width="18"
           height="18"
@@ -123,19 +119,20 @@ export function VoteButtons({
           strokeWidth="2.25"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className={`transition-transform duration-200 ${pending ? "animate-pulse" : "group-hover:-translate-y-0.5"}`}
+          className={`transition-transform duration-200 ${!voted && !pending ? "group-hover:-translate-y-0.5" : ""}`}
           aria-hidden
         >
           <path d="M6 15l6-6 6 6" />
         </svg>
 
-        {/* Label */}
-        <span>{voted ? "Voted" : "Vote worst design"}</span>
+        <span>
+          {voted ? "已投票 ✓" : pending ? "Voting…" : "Vote for 拉完了"}
+        </span>
 
-        {/* Count pill */}
+        {/* Live count from DB */}
         <span
           className={
-            "inline-flex items-center justify-center rounded-full px-2.5 py-0.5 font-mono text-xs tabular-nums font-bold " +
+            "inline-flex items-center justify-center rounded-full px-2.5 py-0.5 font-mono text-xs tabular-nums font-bold transition-all " +
             (voted
               ? "bg-white/20 text-white"
               : "bg-ink-100 dark:bg-ink-800 text-ink-700 dark:text-ink-200")
