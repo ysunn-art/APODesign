@@ -15,8 +15,8 @@ export async function POST(request: Request) {
   const submissionId = String(body.submission_id || "");
   const value = Number(body.value);
   if (!submissionId) return NextResponse.json({ error: "submission_id required" }, { status: 400 });
-  if (value !== 1 && value !== -1)
-    return NextResponse.json({ error: "value must be 1 or -1" }, { status: 400 });
+  if (value !== 1)
+    return NextResponse.json({ error: "value must be 1" }, { status: 400 });
 
   // Users cannot vote on their own submissions.
   const { data: target } = await supabase

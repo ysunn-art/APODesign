@@ -5,6 +5,7 @@ import Link from "next/link";
 import "./globals.css";
 import { SignInButton, SignOutButton } from "@/components/AuthButtons";
 import { getServerSupabase } from "@/lib/supabase/server";
+import { PageTransition } from "@/components/PageTransition";
 
 export const metadata: Metadata = {
   title: "A Piece of Design",
@@ -23,18 +24,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className="font-sans antialiased">
         <header className="sticky top-0 z-30 backdrop-blur-md bg-ink-50/80 dark:bg-ink-950/70 border-b border-ink-200/70 dark:border-ink-800/80">
           <div className="mx-auto max-w-[1400px] px-6 py-4 flex items-center justify-between gap-6">
-            <Link
-              href="/"
-              className="group inline-flex items-center gap-2 font-semibold tracking-tight text-ink-900 dark:text-ink-50"
-            >
-              <span
-                aria-hidden
-                className="inline-block h-2.5 w-2.5 rounded-full bg-accent transition-transform group-hover:scale-110"
-              />
-              <span className="font-mono text-[12px] uppercase tracking-[0.18em] text-ink-500 dark:text-ink-400">
-                A Piece of
-              </span>
-              <span className="text-[15px]">Design</span>
+            <Link href="/" className="inline-flex items-center hover:opacity-80 transition-opacity">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.svg" alt="APO Design" className="h-8 w-auto dark:hidden" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo-dark.svg" alt="APO Design" className="h-8 w-auto hidden dark:block" />
             </Link>
             <nav className="flex items-center gap-1 sm:gap-2 text-sm">
               <NavLink href="/">Gallery</NavLink>
@@ -75,7 +69,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </div>
         </header>
 
-        <main className="mx-auto max-w-[1400px] px-6 py-10 sm:py-14">{children}</main>
+        <main className="mx-auto max-w-[1400px] px-6 py-10 sm:py-14">
+          <PageTransition>{children}</PageTransition>
+        </main>
 
         <footer className="mt-24 border-t border-ink-200 dark:border-ink-800">
           <div className="mx-auto max-w-[1400px] px-6 py-8 flex items-center justify-between text-[12px] font-mono uppercase tracking-[0.16em] text-ink-500 dark:text-ink-400">

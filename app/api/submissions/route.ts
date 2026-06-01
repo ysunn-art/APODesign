@@ -20,18 +20,28 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  // Rate limit: max 5 submissions per user per rolling 24h window.
-  const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { count: recentCount } = await getAdminSupabase()
-    .from("submissions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .gte("created_at", since);
-  if ((recentCount ?? 0) >= MAX_SUBMISSIONS_PER_DAY) {
-    return NextResponse.json(
-      { error: `Rate limit reached: max ${MAX_SUBMISSIONS_PER_DAY} submissions per day.` },
-      { status: 429 }
-    );
+  // Check if user is a moderator — moderators bypass the rate limit.
+  const { data: profile } = await supabase
+    .from("users")
+    .select("is_moderator")
+    .eq("id", user.id)
+    .maybeSingle();
+  const isModerator = !!profile?.is_moderator;
+
+  if (!isModerator) {
+    // Rate limit: max 5 submissions per user per rolling 24h window.
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { count: recentCount } = await getAdminSupabase()
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .gte("created_at", since);
+    if ((recentCount ?? 0) >= MAX_SUBMISSIONS_PER_DAY) {
+      return NextResponse.json(
+        { error: `Rate limit reached: max ${MAX_SUBMISSIONS_PER_DAY} submissions per day.` },
+        { status: 429 }
+      );
+    }
   }
 
   const form = await request.formData();

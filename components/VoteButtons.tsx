@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 
 interface Props {
   submissionId: string;
   initialScore: number;
   initialUserValue: -1 | 0 | 1;
   authed: boolean;
-  /** True when the viewer owns this submission — voting is disabled. */
   isOwner?: boolean;
 }
 
@@ -20,91 +20,134 @@ export function VoteButtons({
   isOwner = false,
 }: Props) {
   const [score, setScore] = useState(initialScore);
-  const [userValue, setUserValue] = useState<-1 | 0 | 1>(initialUserValue);
+  // Treat any non-1 value (including legacy -1) as "not voted"
+  const [voted, setVoted] = useState(initialUserValue === 1);
+  const [currentValue] = useState(initialUserValue);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  if (isOwner) {
-    return (
-      <div className="inline-flex items-center gap-3">
-        <span className="font-mono tabular-nums text-lg w-10 text-center text-ink-900 dark:text-ink-50">
-          {score >= 0 ? `+${score}` : score}
-        </span>
-        <span className="text-xs text-ink-500 dark:text-ink-400">votes · your submission</span>
-      </div>
-    );
-  }
+  // Real-time subscription — keeps vote count in sync without page refresh
+  useEffect(() => {
+    const supabase = getBrowserSupabase();
+    const channel = supabase
+      .channel(`votes:${submissionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "submissions",
+          filter: `id=eq.${submissionId}`,
+        },
+        (payload) => {
+          const newScore = (payload.new as { vote_score: number }).vote_score;
+          if (typeof newScore === "number") setScore(newScore);
+        }
+      )
+      .subscribe();
 
-  async function cast(next: -1 | 1) {
-    if (!authed) {
-      setError("Sign in to vote");
-      return;
-    }
-    const target = userValue === next ? 0 : next;
-    const optimisticScore = score - userValue + target;
-    const prev = { score, userValue };
-    setUserValue(target as -1 | 0 | 1);
-    setScore(optimisticScore);
+    return () => { supabase.removeChannel(channel); };
+  }, [submissionId]);
+
+  async function handleVote() {
+    if (!authed) { setError("Sign in to vote"); return; }
+    const next = voted ? 0 : 1;
+    // Subtract the current stored value (handles legacy -1 votes too), then add new value
+    const optimistic = score - currentValue + next;
+    const prev = { score, voted };
+    setVoted(next === 1);
+    setScore(optimistic);
     setError(null);
 
     startTransition(async () => {
       try {
         const res = await fetch("/api/votes", {
-          method: target === 0 ? "DELETE" : "POST",
+          method: next === 0 ? "DELETE" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ submission_id: submissionId, value: target }),
+          body: JSON.stringify({ submission_id: submissionId, value: 1 }),
         });
         if (!res.ok) {
           const j = await res.json().catch(() => ({}));
           throw new Error(j.error || "Vote failed");
         }
-        router.refresh();
+        // Delay refresh so DB trigger propagates before server re-fetches
+        setTimeout(() => router.refresh(), 800);
       } catch (err) {
-        // rollback to the state before this attempt
-        setUserValue(prev.userValue);
+        setVoted(prev.voted);
         setScore(prev.score);
         setError(err instanceof Error ? err.message : "Vote failed");
       }
     });
   }
 
-  const btn = (dir: -1 | 1, path: string, label: string) => {
-    const isActive = userValue === dir;
-    const accent =
-      dir === 1
-        ? "text-accent border-accent/40 hover:bg-accent/10"
-        : "text-red-600 border-red-500/40 hover:bg-red-500/10 dark:text-red-400";
+  if (isOwner) {
     return (
-      <button
-        onClick={() => cast(dir)}
-        disabled={pending}
-        aria-pressed={isActive}
-        aria-label={label}
-        className={
-          "inline-flex h-9 w-9 items-center justify-center rounded-full border transition active:scale-[0.94] disabled:opacity-60 " +
-          (isActive
-            ? dir === 1
-              ? "bg-accent text-accent-ink border-accent"
-              : "bg-red-600 text-white border-red-600"
-            : `border-ink-200 dark:border-ink-800 text-ink-500 dark:text-ink-400 ${accent}`)
-        }
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-          <path d={path} />
-        </svg>
-      </button>
+      <div className="inline-flex items-center gap-3">
+        <div className="flex items-center gap-2 rounded-full border border-ink-200 dark:border-ink-800 px-5 py-2.5">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-ink-400" aria-hidden>
+            <path d="M6 15l6-6 6 6" />
+          </svg>
+          <span className="font-mono tabular-nums text-base font-semibold text-ink-900 dark:text-ink-50">
+            {score}
+          </span>
+          <span className="text-xs text-ink-500 dark:text-ink-400">
+            {score === 1 ? "vote" : "votes"} · your submission
+          </span>
+        </div>
+      </div>
     );
-  };
+  }
 
   return (
-    <div className="inline-flex items-center gap-3">
-      {btn(1, "M6 15l6-6 6 6", "Upvote")}
-      <span className="font-mono tabular-nums text-lg w-10 text-center text-ink-900 dark:text-ink-50">
-        {score >= 0 ? `+${score}` : score}
-      </span>
-      {btn(-1, "M6 9l6 6 6-6", "Downvote")}
-      {error && <span className="text-xs text-red-600 dark:text-red-400 ml-2">{error}</span>}
+    <div className="flex flex-col items-start gap-2">
+      <button
+        onClick={handleVote}
+        disabled={pending}
+        aria-pressed={voted}
+        aria-label={voted ? "Remove vote" : "Vote for worst design"}
+        className={
+          "group inline-flex items-center gap-3 rounded-full px-6 py-3 text-sm font-medium transition-all active:scale-[0.96] disabled:opacity-60 " +
+          (voted
+            ? "bg-accent text-white border border-accent shadow-lg shadow-accent/25"
+            : "border border-ink-200 dark:border-ink-700 text-ink-700 dark:text-ink-200 hover:border-accent hover:text-accent hover:bg-accent/5")
+        }
+      >
+        {/* Arrow icon */}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill={voted ? "currentColor" : "none"}
+          stroke="currentColor"
+          strokeWidth="2.25"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`transition-transform duration-200 ${pending ? "animate-pulse" : "group-hover:-translate-y-0.5"}`}
+          aria-hidden
+        >
+          <path d="M6 15l6-6 6 6" />
+        </svg>
+
+        {/* Label */}
+        <span>{voted ? "Voted" : "Vote worst design"}</span>
+
+        {/* Count pill */}
+        <span
+          className={
+            "inline-flex items-center justify-center rounded-full px-2.5 py-0.5 font-mono text-xs tabular-nums font-bold " +
+            (voted
+              ? "bg-white/20 text-white"
+              : "bg-ink-100 dark:bg-ink-800 text-ink-700 dark:text-ink-200")
+          }
+        >
+          {score}
+        </span>
+      </button>
+
+      {error && (
+        <p className="text-xs text-red-600 dark:text-red-400 pl-1">{error}</p>
+      )}
     </div>
   );
 }

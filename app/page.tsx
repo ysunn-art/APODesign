@@ -3,6 +3,7 @@ import { getServerSupabase } from "@/lib/supabase/server";
 import { SubmissionCard } from "@/components/SubmissionCard";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { LiveSubmissions } from "@/components/LiveSubmissions";
+import { DesignTicker } from "@/components/DesignTicker";
 import { CATEGORIES, type Category, type Submission } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -56,6 +57,8 @@ export default async function GalleryPage({ searchParams }: { searchParams: Sear
           ten heuristics by an LLM, then voted on by readers.
         </p>
       </section>
+
+      <DesignTicker />
 
       <section className="flex flex-wrap items-center justify-between gap-y-4">
         <CategoryFilter />
